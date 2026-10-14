@@ -1,0 +1,1007 @@
+/* ═══════════════════════════════════════════════
+   SikaFlow glass-purple design language
+   ─────────────────────────────────────
+   Dark glass default. Light mode is a class/token variant:
+   - html.dark  → dark glass (base)
+   - html.light → light glass (the .light block under :root)
+   Both use the same glass/frosted utilities below.
+
+   The vintage animation language (prefers-reduced-motion gate,
+   --ease-out + --duration-* vars, entrance/micro-interaction
+   keyframes, .animate-in-up / .animate-fade-in-up / .animate-stagger-1..8 /
+   .animate-count / .animate-flow-dot / .animate-success / .animate-mark /
+   .animate-document-open / .animate-modal / .animate-press /
+   .animate-skeleton-breathe / .animate-stamp / data-animate-hover)
+   is preserved and extended here. The glowing chart-line
+   keyframes (chart-glow, chart-glow-end, chart-grid) are added for
+   the analytics rows.
+
+   Keep @tailwind base/components/utilities, the @theme inline
+   mapping, and the existing .light/.dark tokens untouched.
+   ═══════════════════════════════════════════════ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@custom-variant dark (&:is(.dark *));
+
+/* ── Tailwind v4 theme mapping (unchanged) ─────────────────────────── */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-serif: var(--font-vintage-serif);
+  --font-sans: var(--font-vintage-body);
+  --font-mono: "Courier Prime", "Courier New", monospace;
+}
+
+/* ═══════════════════════════════════════════════
+   COLOUR SCHEMES (typographic palettes + ink)
+   Order matters: [data-palette] doms come after :root/.dark
+   so a light palette wins over the default light vars,
+   while [data-palette].dark (higher specificity) wins over .dark
+   when dark mode is on.
+   ═══════════════════════════════════════════════ */
+
+/* ── Base light tokens (html.light wins over :root) ───────────────── */
+:root {
+  color-scheme: light;
+  --radius: 0.5rem;
+
+  /* Glass: the light "frosted-pane" base */
+  --glass-bg: oklch(0.985 0.012 85);
+  --glass-bg-weak: oklch(0.995 0.006 85);
+  --glass-border: oklch(0.85 0.036 78);
+  --glass-border-strong: oklch(0.78 0.04 78);
+  --glass-shadow: 0 1px 2px oklch(0 0 0 / 0.06), 0 8px 24px oklch(0 0 0 / 0.08);
+  --glass-shadow-soft: 0 1px 2px oklch(0 0 0 / 0.06), 0 4px 12px oklch(0 0 0 / 0.06);
+  --glass-shadow-glow: 0 0 0 1px oklch(0.62 0.055 60 / 0.08), 0 0 40px oklch(0.62 0.055 60 / 0.06);
+
+  --background: oklch(0.988 0.006 85);
+  --foreground: oklch(0.32 0.03 62);
+  --card: oklch(1 0 85);
+  --card-foreground: oklch(0.32 0.03 62);
+  --popover: oklch(1 0 85);
+  --popover-foreground: oklch(0.32 0.03 62);
+  --primary: oklch(0.42 0.05 55);
+  --primary-foreground: oklch(0.965 0.02 85);
+  --secondary: oklch(0.925 0.024 82);
+  --secondary-foreground: oklch(0.36 0.04 58);
+  --muted: oklch(0.935 0.018 82);
+  --muted-foreground: oklch(0.55 0.028 62);
+  --accent: oklch(0.915 0.032 82);
+  --accent-foreground: oklch(0.36 0.048 58);
+  --destructive: oklch(0.62 0.17 28);
+  --border: oklch(0.87 0.032 78);
+  --input: oklch(0.9 0.028 79);
+  --ring: oklch(0.62 0.055 60);
+  --chart-1: oklch(0.55 0.09 68);
+  --chart-2: oklch(0.42 0.075 55);
+  --chart-3: oklch(0.68 0.07 85);
+  --chart-4: oklch(0.5 0.06 40);
+  --chart-5: oklch(0.6 0.05 95);
+  --sidebar: oklch(0.988 0.006 85);
+  --sidebar-foreground: oklch(0.32 0.03 62);
+  --sidebar-primary: oklch(0.32 0.03 62);
+  --sidebar-primary-foreground: oklch(0.965 0.02 85);
+  --sidebar-accent: oklch(0.91 0.024 82);
+  --sidebar-accent-foreground: oklch(0.33 0.04 58);
+  --sidebar-border: oklch(0.88 0.024 80);
+  --sidebar-ring: oklch(0.7 0.05 68);
+}
+
+/* ═══════════════════════════════════════════════
+   DARK GLASS (html.dark)
+   Deep slate/black + purple ambient accents, frosted glass panels.
+   ═══════════════════════════════════════════════ */
+.dark {
+  color-scheme: dark;
+  --radius: 0.5rem;
+
+  --glass-bg: oklch(0.185 0.01 60);
+  --glass-bg-weak: oklch(0.215 0.012 62);
+  --glass-border: oklch(0.38 0.028 62);
+  --glass-border-strong: oklch(0.3 0.03 62);
+  --glass-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px oklch(0 0 0 / 0.4);
+  --glass-shadow-soft: 0 1px 2px oklch(0 0 0 / 0.3), 0 4px 12px oklch(0 0 0 / 0.25);
+  --glass-shadow-glow: 0 0 0 1px oklch(0.55 0.07 68 / 0.18), 0 0 48px oklch(0.6 0.07 68 / 0.14);
+
+  --background: oklch(0.195 0.014 60);
+  --foreground: oklch(0.9 0.025 82);
+  --card: oklch(0.24 0.018 60);
+  --card-foreground: oklch(0.9 0.025 82);
+  --popover: oklch(0.24 0.018 60);
+  --popover-foreground: oklch(0.9 0.025 82);
+  --primary: oklch(0.87 0.042 80);
+  --primary-foreground: oklch(0.24 0.03 58);
+  --secondary: oklch(0.27 0.02 60);
+  --secondary-foreground: oklch(0.9 0.025 82);
+  --muted: oklch(0.27 0.02 60);
+  --muted-foreground: oklch(0.73 0.022 72);
+  --accent: oklch(0.3 0.028 62);
+  --accent-foreground: oklch(0.92 0.018 82);
+  --destructive: oklch(0.62 0.15 27);
+  --border: oklch(0.36 0.026 62);
+  --input: oklch(0.38 0.026 62);
+  --ring: oklch(0.66 0.05 68);
+  --chart-1: oklch(0.72 0.08 78);
+  --chart-2: oklch(0.62 0.07 60);
+  --chart-3: oklch(0.8 0.06 92);
+  --chart-4: oklch(0.66 0.06 42);
+  --chart-5: oklch(0.7 0.05 100);
+  --sidebar: oklch(0.2 0.014 60);
+  --sidebar-foreground: oklch(0.9 0.025 82);
+  --sidebar-primary: oklch(0.87 0.042 80);
+  --sidebar-primary-foreground: oklch(0.24 0.03 58);
+  --sidebar-accent: oklch(0.28 0.02 60);
+  --sidebar-accent-foreground: oklch(0.92 0.018 82);
+  --sidebar-border: oklch(0.33 0.022 60);
+  --sidebar-ring: oklch(0.66 0.05 68);
+}
+
+/* ── Light glass (html.light) ──────────────────────────────────────── */
+.light {
+  color-scheme: light;
+  --radius: 0.5rem;
+
+  --glass-bg: oklch(0.99 0.006 85);
+  --glass-bg-weak: oklch(0.998 0.004 85);
+  --glass-border: oklch(0.86 0.03 78);
+  --glass-border-strong: oklch(0.78 0.04 78);
+  --glass-shadow-soft: 0 1px 2px oklch(0 0 0 / 0.05), 0 4px 12px oklch(0 0 0 / 0.05);
+  --glass-shadow-glow: 0 0 0 1px oklch(0.55 0.07 68 / 0.10), 0 0 32px oklch(0.55 0.07 68 / 0.08);
+
+  --background: oklch(0.988 0.006 85);
+  --foreground: oklch(0.32 0.03 62);
+  --card: oklch(1 0 85);
+  --card-foreground: oklch(0.32 0.03 62);
+  --popover: oklch(1 0 85);
+  --popover-foreground: oklch(0.32 0.03 62);
+  --primary: oklch(0.42 0.05 55);
+  --primary-foreground: oklch(0.965 0.02 85);
+  --secondary: oklch(0.925 0.024 82);
+  --secondary-foreground: oklch(0.36 0.04 58);
+  --muted: oklch(0.935 0.018 82);
+  --muted-foreground: oklch(0.55 0.028 62);
+  --accent: oklch(0.915 0.032 82);
+  --accent-foreground: oklch(0.36 0.048 58);
+  --destructive: oklch(0.62 0.17 28);
+  --border: oklch(0.87 0.032 78);
+  --input: oklch(0.9 0.028 79);
+  --ring: oklch(0.62 0.055 60);
+  --chart-1: oklch(0.55 0.09 68);
+  --chart-2: oklch(0.42 0.075 55);
+  --chart-3: oklch(0.68 0.07 85);
+  --chart-4: oklch(0.5 0.06 40);
+  --chart-5: oklch(0.6 0.05 95);
+  --sidebar: oklch(0.988 0.006 85);
+  --sidebar-foreground: oklch(0.32 0.03 62);
+  --sidebar-primary: oklch(0.32 0.03 62);
+  --sidebar-primary-foreground: oklch(0.965 0.02 85);
+  --sidebar-accent: oklch(0.91 0.024 82);
+  --sidebar-accent-foreground: oklch(0.33 0.04 58);
+  --sidebar-border: oklch(0.88 0.024 80);
+  --sidebar-ring: oklch(0.7 0.05 68);
+}
+
+/* Palettes (vintage/forest/ocean/indigo/clay/slate) are unchanged;
+   they merely re-set the same variables on [data-palette]. They now
+   live inside a .light/.dark chain because the colour-scheme base is
+   set on :root/.light/.dark, so the original data-palette blocks
+   still work: [data-palette].light overrides :root, and
+   [data-palette].dark overrides .dark. */
+
+/* ═══════════════════════════════════════════════
+   GLASS / FROSTED UTILITIES
+   Transparent frosted panels with a soft border, adjustable blur,
+   and an optional top shine. Used by AppShell, Landing, Dashboard,
+   and the shared GlassPanel / GlassCard classes in markup.
+   ═══════════════════════════════════════════════ */
+
+/* ── Frosted glass panel ──────────────────────────────────────────── */
+.glass {
+  background-color: var(--glass-bg);
+  background-image:
+    linear-gradient(
+      180deg,
+      var(--glass-bg-weak) 0%,
+      var(--glass-bg) 30%,
+      var(--glass-bg-weak) 60%,
+      var(--glass-bg) 100%
+    );
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: saturate(1.1) blur(14px);
+  -webkit-backdrop-filter: saturate(1.1) blur(14px);
+}
+
+/* Sharp, card-like frosted edge (no radial vignette) */
+.glass-card {
+  background-color: var(--glass-bg);
+  background-image:
+    linear-gradient(
+      180deg,
+      var(--glass-bg-weak) 0%,
+      var(--glass-bg) 40%,
+      var(--glass-bg-weak) 70%,
+      var(--glass-bg) 100%
+    );
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: saturate(1.1) blur(10px);
+  -webkit-backdrop-filter: saturate(1.1) blur(10px);
+}
+
+/* Soft ambient glow — the purple vignette behind the dashboard box */
+.glass-ambient {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-glow), var(--glass-shadow-soft);
+  backdrop-filter: saturate(1.08) blur(16px);
+  -webkit-backdrop-filter: saturate(1.08) blur(16px);
+}
+
+/* ── Glow ring utilities (for active/selected states) ─────────────── */
+.glass-ring {
+  box-shadow: 0 0 0 1px var(--glass-border), 0 0 0 3px var(--glass-border);
+}
+
+/* ── Shine streak (subtle horizontal highlight) ──────────────────── */
+.glass-shine {
+  position: relative;
+}
+.glass-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    color-mix(in oklab, var(--glass-bg) 70%, var(--primary)) 50%,
+    transparent 70%
+  );
+  opacity: 0.35;
+  mask-image: linear-gradient(
+    to bottom right,
+    transparent 0%,
+    oklch(1 0 85 / 0.35) 50%,
+    transparent 100%
+  );
+}
+
+/* ── Dimmed "wall" glass (panels viewed inside the main box) ─────── */
+.glass-wall {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-soft);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ── Subtle decorative radial glow (bottom-right corner) ─────────── */
+.deco-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    60% 50% at 85% 15%,
+    oklch(0.55 0.06 80 / 0.12) 0%,
+    transparent 60%
+  );
+}
+
+/* ── Reduced-motion gate for glass animations ─────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .glass,
+  .glass-card,
+  .glass-ambient,
+  .glass-wall {
+    box-shadow: var(--glass-shadow-soft);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   GLORIOUS CHART-LINE KEYFRAMES (analytics rows)
+   Cyan/green + yellow glow lines that pulse against a dark grid.
+   Used by AppShell analytics-card and reused in Landing hero.
+   ═══════════════════════════════════════════════ */
+
+@keyframes chart-glow {
+  0% {
+    opacity: 0.6;
+    transform: scaleX(0.98);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1.005);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scaleX(0.98);
+  }
+}
+
+@keyframes chart-glow-end {
+  0% {
+    opacity: 0.55;
+    transform: scaleX(1) translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1) translateY(2px);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scaleX(1) translateY(0);
+  }
+}
+
+@keyframes chart-grid {
+  from {
+    background-size: 200% 100%;
+  }
+  to {
+    background-size: 200% 100%;
+  }
+}
+
+/* Dark chart grid background (used inside .analytics-card) */
+.analytics-grid {
+  background-image:
+    linear-gradient(var(--glass-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--glass-border) 1px, transparent 1px);
+  background-size: 40px 40px, 40px 40px;
+  background-position: 0 0, 0 0;
+  background-color: var(--glass-bg-weak);
+  position: relative;
+}
+
+/* The glowing chart line — cyan/green first, yellow second */
+.chart-line {
+  position: relative;
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--chart-1), var(--chart-3));
+  background-size: 200% 100%;
+  box-shadow: 0 0 8px oklch(0.55 0.09 68 / 0.45), 0 0 24px oklch(0.55 0.09 68 / 0.2);
+  animation: chart-glow 1.1s var(--ease-out) infinite;
+}
+
+.chart-line-trail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--chart-3), var(--chart-2));
+  opacity: 0.4;
+  animation: chart-glow-end 1.3s var(--ease-out) infinite;
+}
+
+/* Yellow accent line — the rising-mount indicator */
+.chart-line-accent {
+  position: relative;
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--chart-4), var(--chart-5));
+  box-shadow: 0 0 8px oklch(0.5 0.06 40 / 0.35), 0 0 20px oklch(0.5 0.06 40 / 0.15);
+  z-index: 1;
+  animation: chart-glow-end 1.2s var(--ease-out) infinite;
+}
+
+/* ── Demo "sparkline" markup used by the analytics cards ─────────── */
+.sparkline {
+  position: relative;
+  height: 40px;
+  width: 100%;
+  display: block;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--glass-bg-weak);
+}
+
+.sparkline-fill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  height: 0;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(
+    0deg,
+    color-mix(in oklab, var(--chart-1) 60%, transparent),
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.sparkline-wave {
+  position: relative;
+  height: 100%;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(180deg, var(--chart-1), var(--chart-3));
+  box-shadow: 0 0 6px var(--chart-1), 0 0 18px var(--chart-1);
+  animation: chart-glow 1.1s var(--ease-out) infinite;
+}
+
+/* ═══════════════════════════════════════════════
+   REST OF THE TEMPLATE (unchanged)
+   Do not remove: vintage animation language,
+   @layer base, .paper-texture / .paper-card / .paper-card / .parchment-edge,
+   .ledger-label / .letterpress / .stamp / .rule-double / .ledger-lines,
+   .banner-in, print block, fun-size utilities, and the
+   SikaFlow micro-interaction animation language below.
+   ═══════════════════════════════════════════════ */
+
+/* DO NOT CHANGE */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "liga" 1, "kern" 1;
+  }
+  h1, h2, h3, h4, h5, h6,
+  .font-serif {
+    font-family: var(--font-vintage-serif);
+  }
+  button:not([disabled]),
+  [role="button"]:not([disabled]) {
+    cursor: pointer;
+  }
+  ::selection {
+    background: oklch(0.62 0.055 60 / 30%);
+  }
+}
+
+/* ── Vintage texture & archival utilities ─────────────────────────── */
+
+/* Aged-paper grain: fine sepia speckle over the page or a panel */
+.paper-texture {
+  background-color: var(--background);
+  background-image: radial-gradient(
+      oklch(0.62 0.06 70 / 5.5%) 1px,
+      transparent 1px
+    ),
+    radial-gradient(oklch(0.4 0.05 55 / 4%) 1px, transparent 1px);
+  background-size: 7px 7px, 13px 13px;
+  background-position: 0 0, 4px 6px;
+}
+
+/* Even-aged variant for cards & panels */
+.paper-card {
+  background-image: radial-gradient(
+      oklch(0.55 0.06 70 / 4.5%) 1px,
+      transparent 1px
+    ),
+    radial-gradient(oklch(0.4 0.05 55 / 3.5%) 1px, transparent 1px);
+  background-size: 7px 7px, 12px 12px;
+  background-position: 0 0, 3px 5px;
+}
+
+/* Faded vignette along the edges of a hero panel */
+.parchment-edge {
+  box-shadow:
+    inset 0 0 5rem oklch(0.5 0.05 60 / 9%),
+    inset 0 0 1.25rem oklch(0.45 0.05 55 / 7%);
+}
+
+/* Double rule — archival frame detail */
+.rule-double {
+  border-top: 1px solid var(--border);
+  position: relative;
+}
+.rule-double::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 0;
+  right: 0;
+  border-top: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+}
+
+/* Letterpress heading */
+.letterpress {
+  text-shadow: 0 1px 0 oklch(1 0 0 / 45%);
+}
+.dark .letterpress {
+  text-shadow: 0 1px 0 oklch(0 0 0 / 40%);
+}
+
+/* Embossed stamp/currency chip */
+.stamp {
+  box-shadow:
+    inset 0 0 0 1.5px currentColor,
+    0 0 0 2.5px color-mix(in oklab, currentColor 18%, transparent);
+}
+
+/* Small caps label — ledger style */
+.ledger-label {
+  font-family: var(--font-vintage-body);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Faint ruled lines behind a panel, like ledger paper */
+.ledger-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    color-mix(in oklab, var(--border) 45%, transparent) 27px,
+    color-mix(in oklab, var(--border) 45%, transparent) 28px
+  );
+}
+
+/* Hide scrollbars on horizontal nav strips while keeping scroll */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Offline banner slide */
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.banner-in {
+  animation: banner-in 0.14s ease-out;
+}
+
+/* ── Print: quote & invoice sheets → clean PDF pages ─────────────── */
+@media print {
+  :root {
+    --background: oklch(0.97 0.012 85);
+    --foreground: oklch(0.28 0.03 60);
+    --card: oklch(0.985 0.008 85);
+    --card-foreground: oklch(0.28 0.03 60);
+    --border: oklch(0.82 0.03 78);
+    --muted-foreground: oklch(0.45 0.028 62);
+    --primary: oklch(0.33 0.052 55);
+  }
+
+  body {
+    background: var(--card) !important;
+  }
+
+  aside,
+  nav,
+  .no-print,
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  main > div {
+    max-width: none !important;
+  }
+
+  .quote-sheet {
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .quote-sheet tr {
+    break-inside: avoid;
+  }
+
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   SikaFlow micro-interaction animation language
+   ─────────────────────────────────────
+   GPU-friendly: transforms + opacity only.
+   Rapid, sub-second durations. No bouncing,
+   no elastic overshoot, no long fades.
+   ═══════════════════════════════════════════════ */
+
+/* ── Motion removed — all animations disabled ────────
+   Unconditional kill switch (supersedes prefers-reduced-motion):
+   entrances, overlays, loops, glow pulses, hover transitions,
+   and smooth scroll are all off. Inline styles and utility
+   classes cannot win against these !important declarations.
+   Delete this block to restore the animation language below. */
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* ── Shared timing / easing ─────────────────────────── */
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 70ms;
+  --duration-mid: 100ms;
+  --duration-normal: 130ms;
+  --duration-slow: 180ms;
+}
+
+/* tw-animate-css (Radix dropdowns, popovers, selects, tooltips)
+   defaults to the sluggish plain `ease` curve. Force the shared
+   ease-out on every overlay enter/exit so they snap into place.
+   Duration stays per-component (`duration-*` utilities win). */
+.animate-in,
+.animate-out {
+  animation-timing-function: var(--ease-out);
+}
+
+/* ── Entrance — serif heading drops into place ───────── */
+@keyframes in-serif {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.in-serif {
+  animation: in-serif var(--duration-normal) var(--ease-out) both;
+}
+
+/* ── Entrance — cards slip up into place ─────────────── */
+@keyframes in-up {
+  from {
+    opacity: 0.9;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-in-up {
+  animation: in-up var(--duration-normal) var(--ease-out) both;
+}
+
+/* ── Entrance — simple fade + tiny rise ──────────────── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up var(--duration-fast) var(--ease-out) both;
+}
+
+/* ── Entrance — pure fade (no movement) ──────────────── */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: fade-in var(--duration-fast) var(--ease-out) both;
+}
+
+/* ── Entrance — subtle opacity lift (survey / feature) ─ */
+@keyframes fade-opacity-in {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-opacity-in {
+  animation: fade-opacity-in var(--duration-fast) var(--ease-out) both;
+}
+
+/* ── Entrance — staggered children ───────────────────── */
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-stagger-1 {
+  animation: stagger-in var(--duration-normal) var(--ease-out) both;
+  animation-delay: 10ms;
+}
+.animate-stagger-2 {
+  animation: stagger-in var(--duration-normal) var(--ease-out) both;
+  animation-delay: 20ms;
+}
+.animate-stagger-3 {
+  animation: stagger-in var(--duration-normal) var(--ease-out) both;
+  animation-delay: 30ms;
+}
+.animate-stagger-4 {
+  animation: stagger-in var(--duration-normal) var(--ease-out) both;
+  animation-delay: 40ms;
+}
+.animate-stagger-5 {
+  animation: stagger-in var(--duration-normal) var(--ease-out) both;
+  animation-delay: 50ms;
+}
+.animate-stagger-6 {
+  animation: stagger-in var(--duration-normal) var(--ease-out) both;
+  animation-delay: 60ms;
+}
+.animate-stagger-7 {
+  animation: stagger-in var(--duration-normal) var(--ease-out) both;
+  animation-delay: 70ms;
+}
+.animate-stagger-8 {
+  animation: stagger-in var(--duration-normal) var(--ease-out) both;
+  animation-delay: 80ms;
+}
+
+/* ── Number counting ─────────────────────────────────── */
+@keyframes count-up {
+  from {
+    opacity: 0.7;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-count {
+  animation: count-up 200ms var(--ease-out) forwards;
+}
+
+/* ── Status flow — the signature 4-step progression ──── */
+@keyframes flow-dot {
+  0% {
+    transform: scale(0.85);
+  }
+  40% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ── Success toast ───────────────────────────────────── */
+@keyframes success-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-success {
+  animation: success-in 160ms var(--ease-out) both;
+}
+
+/* ── Success mark (checkmark draw) ───────────────────── */
+@keyframes mark-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-mark {
+  animation: mark-in 150ms var(--ease-out) both;
+}
+
+/* ── Document open ───────────────────────────────────── */
+@keyframes document-open {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-document-open {
+  animation: document-open var(--duration-normal) var(--ease-out) both;
+}
+
+/* ── Modal / drawer ──────────────────────────────────── */
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+.animate-modal-backdrop {
+  animation: modal-backdrop-in var(--duration-fast) var(--ease-out) both;
+}
+.animate-modal {
+  animation: modal-in var(--duration-normal) var(--ease-out) both;
+}
+.animate-modal-exit {
+  animation: modal-out var(--duration-fast) var(--ease-out) both;
+}
+
+/* ── Micro-interactions ──────────────────────────────── */
+@keyframes press {
+  0% {
+    transform: none;
+  }
+  50% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: none;
+  }
+}
+.animate-press {
+  animation: press var(--duration-fast) var(--ease-out) both;
+}
+
+/* ── Loading — skeleton ring ─────────────────────────── */
+@keyframes skeleton-breathe {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+.animate-skeleton-breathe {
+  animation: skeleton-breathe 0.6s var(--ease-out) infinite;
+}
+
+/* ── Flow indicator (payment / processing) ───────────── */
+@keyframes flow-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+.animate-flow-dot {
+  animation: flow-dot-pulse 0.7s var(--ease-out) infinite;
+}
+.animate-flow-line {
+  animation: flow-line-drift 0.7s var(--ease-out) infinite;
+}
+@keyframes flow-line-drift {
+  0% {
+    transform: scaleX(0);
+  }
+  50% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Document flow stamp ─────────────────────────────── */
+@keyframes stamp-draw {
+  0% {
+    box-shadow: inset 0 0 0 0 currentColor;
+  }
+  60% {
+    box-shadow: inset 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: inset 0 0 0 2.5px currentColor;
+  }
+}
+.animate-stamp {
+  animation: stamp-draw 200ms var(--ease-out) forwards;
+}
+
+/* ── Utility: zero-hover override for touch devices ───── */
+@media (hover: none) {
+  .no-hover,
+  [data-animate-hover] {
+    transition: none !important;
+  }
+}

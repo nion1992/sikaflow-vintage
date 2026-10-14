@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f2ebdd" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="description"
+    content="SikaFlow — simple quotations, invoices, customer management and payment tracking for Eswatini businesses. Create a professional quote in under a minute." />
+  <meta name="robots" content="index, follow" />
+  <meta name="color-scheme" content="light dark" />
+  <meta property="og:title" content="SikaFlow — Quotes & Invoices for Eswatini Businesses" />
+  <meta property="og:description"
+    content="Create a professional quotation or invoice in less than one minute and share it with your customer." />
+  <meta property="og:type" content="website" />
+  <title>SikaFlow — Quotes &amp; Invoices for Eswatini Businesses</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Source+Sans+3:ital,wght@0,300..800;1,300..800&display=swap"
+    rel="stylesheet" />
+  <!-- Optional fonts offered in Settings → Appearance -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Lora:ital,wght@0,400..700;1,400..700&family=DM+Serif+Display:ital@0;1&family=Inter:wght@400..700&family=Nunito+Sans:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+    rel="stylesheet" />
+  <!-- Apply saved appearance before first paint (avoids a flash) -->
+  <script>
+    try {
+      var s = localStorage.getItem("sikaflow.appearance");
+      if (s) {
+        var a = JSON.parse(s);
+        var r = document.documentElement;
+        if (a.palette) r.setAttribute("data-palette", a.palette);
+        if (a.headingFont) r.setAttribute("data-heading-font", a.headingFont);
+        if (a.bodyFont) r.setAttribute("data-body-font", a.bodyFont);
+        var dark =
+          a.mode === "dark" ||
+          (a.mode === "system" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (dark) r.classList.add("dark");
+      }
+    } catch (e) {}
+  </script>
+  <script type="module" crossorigin src="/assets/index-AS-tLWI4.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/react-vendor-Cq11W_rJ.js">
+  <link rel="modulepreload" crossorigin href="/assets/framer-motion-DPfFMxeW.js">
+  <link rel="modulepreload" crossorigin href="/assets/radix-ui-ZgjmQ2dA.js">
+  <link rel="modulepreload" crossorigin href="/assets/charts-DiFmVdmI.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-yP18nBe3.css">
+</head>
+
+<body>
+  <div id="root"></div>
+  <noscript>
+    <div
+      style="font-family: Georgia, serif; text-align: center; padding: 4rem 1.5rem; color: #4a3620; background: #f2ebdd;">
+      <h1 style="font-size: 1.5rem;">SikaFlow</h1>
+      <p>SikaFlow needs JavaScript to run. Please enable it and reload this page.</p>
+    </div>
+  </noscript>
+</body>
+
+</html>

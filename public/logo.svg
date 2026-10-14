@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- SikaFlow archival seal: aged-paper ground, sepia rim, engraved serif monogram -->
+  <rect width="512" height="512" rx="96" fill="#8F6B42"/>
+  <rect x="12" y="12" width="488" height="488" rx="86" fill="#EAE0C6"/>
+  <rect x="12" y="12" width="488" height="488" rx="86" fill="none" stroke="#4A3620" stroke-width="10"/>
+  <rect x="44" y="44" width="424" height="424" rx="66" fill="none" stroke="#8F6B42" stroke-width="4" stroke-dasharray="18 10"/>
+  <path d="M256 96 C 306 156 216 196 262 250 C 300 294 328 322 322 366" fill="none" stroke="#B08A5A" stroke-width="12" stroke-linecap="round"/>
+  <text x="256" y="318" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="240" font-weight="700" fill="#4A3620">S</text>
+  <rect x="150" y="410" width="212" height="14" rx="7" fill="#B08A5A"/>
+</svg>
