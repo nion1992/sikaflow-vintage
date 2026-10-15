@@ -51,7 +51,71 @@ const schema = defineSchema(
       // SikaFlow: phone for WhatsApp features; defaultBusiness is set after onboarding
       phone: v.optional(v.string()),
       defaultBusinessId: v.optional(v.id("businesses")),
-    }).index("email", ["email"]), // index for the email. do not remove or modify
+    }).index("email", ["email"]),
+
+    // Self-serve customer accounts. Each customer is their own Convex user; the
+    // row below is the join table that gives an account access to the company's
+    // products and requested RFQs (company-owned data). `email` is only used as a
+    // login id / lookup hint together with the company id.
+    customerAccounts: defineTable({
+      // Owned by the customer account (its own user id)
+      accountUserId: v.id("users"),
+      // The company that owns the products / RFQs this customer is allowed to see
+      businessId: v.id("businesses"),
+      // The customer record in this company's customer book
+      customerId: v.id("customers"),
+      displayName: v.string(),
+      email: v.string(), // used as a login hint; verified at sign-up / change of email
+      invitedBy: v.optional(v.id("users")),
+      createdAt: v.number(),
+      deletedAt: v.optional(v.number()),
+    })
+      .index("by_accountUserId", ["accountUserId"])
+      .index("by_businessId", ["businessId"])
+      .index("by_businessId_customerId", ["businessId", "customerId"])
+      .index("by_businessId_email", ["businessId", "email"]),
+
+    // Links a customer account's Convex user to the products and RFQs its company
+    // owns. A customer account's user may only read the rows it is granted here.
+    customerBusinessAccess: defineTable({
+      businessId: v.id("businesses"),
+      accountUserId: v.id("users"),
+      customerAccountId: v.id("customerAccounts"),
+      access: v.union(v.literal("products"), v.literal("rfqs")),
+      createdAt: v.number(),
+    })
+      .index("by_businessId", ["businessId"])
+      .index("by_accountUserId", ["accountUserId"])
+      .index("by_customerAccountId", ["customerAccountId"]),
+
+    // Requested-for-quotation requests. A customer fills in a short form against a
+    // product they are interested in; the company owns the product and can reply
+    // with a full quotation. `customerId` is the customer's own id *within the
+    // company's customer book*.
+    requestedRfqs: defineTable({
+      businessId: v.id("businesses"),
+      customerId: v.id("customers"),
+      customerAccountId: v.id("customerAccounts"),
+      productId: v.id("products"),
+      productName: v.string(),
+      message: v.string(),
+      status: v.union(
+        v.literal("new"),
+        v.literal("viewed"),
+        v.literal("responded"),
+        v.literal("rejected"),
+      ),
+      viewedAt: v.optional(v.number()),
+      respondedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      deletedAt: v.optional(v.number()),
+    })
+      .index("by_businessId", ["businessId"])
+      .index("by_businessId_customerAccountId", ["businessId", "customerAccountId"])
+      .index("by_businessId_productId", ["businessId", "productId"])
+      .index("by_businessId_customerId", ["businessId", "customerId"]),
+
+    /* ── Customers ──────────────────────────────────────────────── */
 
     /* ── Businesses ─────────────────────────────────────────────── */
 

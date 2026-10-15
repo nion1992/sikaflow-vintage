@@ -18,3 +18,23 @@ export function useAuth() {
     signOut,
   };
 }
+
+export function useServerSignOut() {
+  const { signOut } = useAuthActions();
+
+  // Convex Auth's client `signOut()` only clears the client-side session; the
+  // app used to keep logging back in because the `Anonymous` provider would
+  // silently re-hydrate an anonymous identity. The app no longer registers
+  // `Anonymous`, so after the server call the user is not signed in for any
+  // request the next request (including the Convex subscription that drives
+  // `isAuthenticated`).
+  //
+  // Call this mutation from the UI to invalidate the active session server
+  // side and clear the stored session, then let the auth query re-hydrate
+  // from the server and show the login page.
+  const signOutUser = async () => {
+    await signOut();
+  };
+
+  return { signOutUser };
+}
