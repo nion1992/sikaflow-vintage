@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { action, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthUserId } from "./supabaseAuth";
 import { AuthzError } from "./authz";
 
 /**
@@ -29,11 +29,11 @@ function getAdminClient(): SupabaseClient {
 /** Authenticate once in the action (runQuery carries no auth downstream). */
 async function requireAdminBusiness(
   ctx: ActionCtx,
-  userId: Id<"users"> | null,
+  userId: string | null,
 ): Promise<{ businessId: Id<"businesses">; businessName: string }> {
   if (!userId) throw new AuthzError("You must be signed in to do that.");
   const result = await ctx.runQuery(internal.backupsData.resolveAdminMembership, {
-    userId,
+    supabaseUserId: userId,
   });
   if (!result) {
     throw new AuthzError("Only the business owner or an admin can run backups.");

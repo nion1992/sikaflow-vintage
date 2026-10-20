@@ -1,4 +1,3 @@
-import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
@@ -35,38 +34,46 @@ const roleValidator = v.union(
  */
 const schema = defineSchema(
   {
-    // default auth tables using convex auth.
-    ...authTables, // do not remove or modify
+    // ── Supabase Auth user mapping ────────────────────────────────
+    //
+    // Supabase Auth manages identity (sign-in, sessions, OTP, magic link).
+    // This table maps each Supabase auth.user to the app's local profile.
+    // Replaces the Convex Auth `authTables` / `users` table.
 
-    // the users table is the default users table that is brought in by the authTables
-    users: defineTable({
-      name: v.optional(v.string()), // name of the user. do not remove
-      image: v.optional(v.string()), // image of the user. do not remove
-      email: v.optional(v.string()), // email of the user. do not remove
-      emailVerificationTime: v.optional(v.number()), // email verification time. do not remove
-      isAnonymous: v.optional(v.boolean()), // is the user anonymous. do not remove
-
-      role: v.optional(roleValidator), // role of the user. do not remove
-
-      // SikaFlow: phone for WhatsApp features; defaultBusiness is set after onboarding
+    supabaseUsers: defineTable({
+      // The Supabase auth.users id (the verified identity).
+      supabaseUserId: v.string(),
+      // App profile (mirrors what Supabase user_metadata could hold, but we keep
+      // it in Convex so the app owns the shape and can add fields freely).
+      name: v.optional(v.string()),
+      image: v.optional(v.string()),
+      email: v.optional(v.string()),
+      emailVerificationTime: v.optional(v.number()),
+      role: v.optional(roleValidator),
       phone: v.optional(v.string()),
       defaultBusinessId: v.optional(v.id("businesses")),
-    }).index("email", ["email"]),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+    })
+      .index("by_supabaseUserId", ["supabaseUserId"])
+      .index("by_email", ["email"]),
+
+    // ── Business data ──────────────────────────────────────────────
 
     // Self-serve customer accounts. Each customer is their own Convex user; the
     // row below is the join table that gives an account access to the company's
     // products and requested RFQs (company-owned data). `email` is only used as a
     // login id / lookup hint together with the company id.
     customerAccounts: defineTable({
-      // Owned by the customer account (its own user id)
-      accountUserId: v.id("users"),
+      // Owned by the customer account (its own Supabase auth user id)
+      accountUserId: v.string(),
       // The company that owns the products / RFQs this customer is allowed to see
       businessId: v.id("businesses"),
       // The customer record in this company's customer book
       customerId: v.id("customers"),
       displayName: v.string(),
       email: v.string(), // used as a login hint; verified at sign-up / change of email
-      invitedBy: v.optional(v.id("users")),
+      invitedBy: v.optional(v.string()), // Supabase auth user id
       createdAt: v.number(),
       deletedAt: v.optional(v.number()),
     })
@@ -79,7 +86,7 @@ const schema = defineSchema(
     // owns. A customer account's user may only read the rows it is granted here.
     customerBusinessAccess: defineTable({
       businessId: v.id("businesses"),
-      accountUserId: v.id("users"),
+      accountUserId: v.string(),
       customerAccountId: v.id("customerAccounts"),
       access: v.union(v.literal("products"), v.literal("rfqs")),
       createdAt: v.number(),
@@ -130,16 +137,18 @@ const schema = defineSchema(
       website: v.optional(v.string()),
       taxNumber: v.optional(v.string()), // VAT number
       currency: v.string(), // ISO 4217, e.g. "SZL"
-      createdById: v.id("users"),
+      createdById: v.string(),
       deletedAt: v.optional(v.number()),
     })
       .index("by_createdBy", ["createdById"])
       .index("by_name", ["name"]),
 
-    // Multi-user support: a user belongs to a business through membership rows
+    // Multi-user support: a user belongs to a business through membership rows.
+    // `userId` stores the Supabase auth user id (a string), NOT a Convex doc id.
+    // The `supabaseUsers` table maps supabaseUserId -> app profile.
     businessMembers: defineTable({
       businessId: v.id("businesses"),
-      userId: v.id("users"),
+      userId: v.string(),
       role: businessRole, // owner | admin | member
       invitedEmail: v.optional(v.string()), // for future invites
       deletedAt: v.optional(v.number()),
@@ -214,8 +223,8 @@ const schema = defineSchema(
       grandTotalCents: v.number(),
       notes: v.optional(v.string()),
       terms: v.optional(v.string()),
-      // Audit trail
-      createdById: v.id("users"),
+      // Audit trail — stores the Supabase auth user id
+      createdById: v.string(),
       sentAt: v.optional(v.number()),
       acceptedAt: v.optional(v.number()),
       rejectedAt: v.optional(v.number()),
@@ -270,7 +279,7 @@ const schema = defineSchema(
       paymentTermsDays: v.optional(v.number()),
       // Origin: quotes → invoices conversion
       sourceQuoteId: v.optional(v.id("quotes")),
-      createdById: v.id("users"),
+      createdById: v.string(),
       sentAt: v.optional(v.number()),
       cancelledAt: v.optional(v.number()),
       deletedAt: v.optional(v.number()),
@@ -312,7 +321,7 @@ const schema = defineSchema(
       method: paymentMethod,
       reference: v.optional(v.string()),
       notes: v.optional(v.string()),
-      recordedById: v.id("users"),
+      recordedById: v.string(),
       deletedAt: v.optional(v.number()),
     })
       .index("by_invoiceId", ["invoiceId"])

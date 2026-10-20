@@ -1,33 +1,43 @@
 import type { AuthConfig } from "convex/server";
 
-// Freebuff-signed federated tokens (see freebuff web's
-// src/lib/vly-convex-jwt.ts) let a signed-in freebuff.com user carry their
-// identity into this project without going through local sign-in. customJwt
-// is correct for this provider: freebuff's tokens and JWKS both carry a
-// `kid` header, which the customJwt validation path requires.
-const freebuffIssuer =
-  process.env.VLY_CONVEX_AUTH_ISSUER ?? "https://freebuff.com";
+/**
+ * Convex verifies Supabase access tokens as a custom JWT provider.
+ *
+ * Requirements on the Supabase side:
+ *  - The project must sign JWTs with an asymmetric key (ES256 or RS256).
+ *    Supabase → Authentication → JWT Keys → enable the new signing keys.
+ *    Convex cannot verify legacy HS256 shared secrets.
+ *  - The JWKS endpoint must be public: `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`.
+ *
+ * Set this on the Convex deployment (`npx convex env set NAME value`):
+ *  - SUPABASE_URL   e.g. https://abcdefgh.supabase.co
+ *
+ * The algorithm and audience are literal here because Convex requires every
+ * env var referenced in this file to be set. Change ALGORITHM to "RS256" if
+ * your project's signing key uses RS256.
+ */
+const ALGORITHM = "ES256" as const;
+const AUDIENCE = "authenticated";
+const supabaseUrl = (
+  process.env.SUPABASE_URL ??
+  process.env.VITE_SUPABASE_URL ??
+  ""
+).replace(/\/+$/, "");
+
+if (!supabaseUrl) {
+  throw new Error(
+    "SUPABASE_URL is not set on the Convex deployment, so Supabase access tokens cannot be verified. Run: npx convex env set SUPABASE_URL https://<project>.supabase.co",
+  );
+}
 
 export default {
   providers: [
-    // Standard Convex Auth provider for this project's own sign-in ("Get
-    // Started" email/guest, see src/convex/auth.ts). The deployment
-    // self-issues JWTs (iss = CONVEX_SITE_URL, no `kid` header) validated
-    // via OIDC discovery at `${domain}/.well-known/openid-configuration`,
-    // served by auth.addHttpRoutes() in convex/http.ts. Do NOT convert this
-    // entry to `type: "customJwt"` — that path rejects tokens without a
-    // `kid` header, so sign-in would silently never confirm and RequireAuth
-    // would loop back to /auth forever.
-    {
-      domain: process.env.CONVEX_SITE_URL!,
-      applicationID: "convex",
-    },
     {
       type: "customJwt",
-      issuer: freebuffIssuer,
-      jwks: `${freebuffIssuer}/api/web/.well-known/jwks.json`,
-      applicationID: "vly-convex",
-      algorithm: "RS256",
+      issuer: `${supabaseUrl}/auth/v1`,
+      jwks: `${supabaseUrl}/auth/v1/.well-known/jwks.json`,
+      algorithm: ALGORITHM,
+      applicationID: AUDIENCE,
     },
   ],
 } satisfies AuthConfig;

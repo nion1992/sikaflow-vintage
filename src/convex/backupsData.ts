@@ -33,11 +33,11 @@ type Snapshot = {
  * only a userId.
  */
 export const resolveAdminMembership = internalQuery({
-  args: { userId: v.id("users") },
+  args: { supabaseUserId: v.string() },
   handler: async (ctx, args) => {
     const memberships = await ctx.db
       .query("businessMembers")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_userId", (q) => q.eq("userId", args.supabaseUserId))
       .collect();
 
     for (const membership of memberships) {
@@ -46,7 +46,7 @@ export const resolveAdminMembership = internalQuery({
       const business = await ctx.db.get(membership.businessId);
       if (business && business.deletedAt === undefined) {
         return {
-          userId: args.userId,
+          userId: args.supabaseUserId,
           businessId: business._id,
           role: membership.role,
           businessName: business.name,

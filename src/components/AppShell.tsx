@@ -28,6 +28,7 @@ import {
   FileText,
   Home,
   LayoutDashboard,
+  Loader2,
   LogOut,
   ReceiptText,
   Settings,
@@ -220,6 +221,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
     await signOut();
     navigate("/");
   };
+
+  // Every page inside this shell queries business data, and those queries throw
+  // ("No active business found") for a caller who has none — so a page must not
+  // render until the business query has resolved *and* returned a business.
+  // Rendering during the loading window crashes the app on the very first
+  // sign-in; when there is genuinely no business we spin while the effect above
+  // redirects to /onboarding.
+  if (businessLoading || needsOnboarding) {
+    return (
+      <div className="flex min-h-screen items-center justify-center paper-texture">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <RouteContext.Provider value={{ routeKey }}>

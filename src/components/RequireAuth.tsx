@@ -8,8 +8,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import { useBusiness } from "@/hooks/use-business";
 import { Loader2, Lock } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
 
 /**
@@ -20,6 +21,11 @@ import { Navigate, useLocation, useNavigate } from "react-router";
  * were moved. The block is now stated on the page they landed on, and sign-in
  * still returns them to it via `returnTo`. Pass `redirectImmediately` for a
  * route where the bounce really is the better experience.
+ *
+ * It also guards against a signed-in user with no business: nearly every page
+ * queries business data, and those queries throw "No active business found"
+ * for a caller who has none — which crashed the app on the first sign-in.
+ * Such a user is sent to `/onboarding` before any page mounts.
  */
 export function RequireAuth({
   children,
@@ -36,10 +42,22 @@ export function RequireAuth({
   redirectImmediately?: boolean;
 }) {
   const { isLoading, isAuthenticated } = useAuth();
+  const { business, isLoading: businessLoading } = useBusiness();
   const navigate = useNavigate();
   const location = useLocation();
 
-  if (isLoading) {
+  const isOnboardingRoute = location.pathname === "/onboarding";
+  const needsOnboarding = !businessLoading && isAuthenticated && business === null;
+
+  // Send a fresh account to onboarding exactly once, from a place that runs
+  // before the page's own queries mount.
+  useEffect(() => {
+    if (needsOnboarding && !isOnboardingRoute) {
+      navigate("/onboarding", { replace: true });
+    }
+  }, [needsOnboarding, isOnboardingRoute, navigate]);
+
+  if (isLoading || businessLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -83,6 +101,16 @@ export function RequireAuth({
             </Button>
           </CardFooter>
         </Card>
+      </main>
+    );
+  }
+
+  // Onboarding renders the create-business form; every other page needs a
+  // business, so hold it while the redirect above is in flight.
+  if (needsOnboarding && !isOnboardingRoute) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </main>
     );
   }

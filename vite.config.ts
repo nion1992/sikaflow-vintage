@@ -83,7 +83,8 @@ export default defineConfig({
       'react-dom',
       'react-dom/client',
       'react-router',
-      '@convex-dev/auth/react',
+      '@supabase/supabase-js',
+      '@supabase/auth-js',
       'framer-motion',
       // vlyPlugin() injects this import at serve time, so the dep scanner
       // never sees it. Without it here the first page load discovers it,

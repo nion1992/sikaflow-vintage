@@ -20,7 +20,13 @@ Currency is **SZL (emalangeni, "E")** and VAT is configurable per business
 ## Tech stack
 
 Vite · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · Convex
-(backend & database) · Convex Auth (email OTP + anonymous) · Bun.
+(backend & database) · Supabase Auth (email OTP, magic link, password) · Bun.
+
+Supabase owns identity; Convex owns app data. The browser hands Convex the
+Supabase access token (`ConvexReactClient.setAuth`), Convex verifies it against
+the Supabase JWKS, and every function reads the caller with
+`ctx.auth.getUserIdentity()` — no per-request header plumbing, no service-role
+key on the request path.
 
 ## Getting started
 
@@ -31,8 +37,39 @@ bunx convex dev    # backend & codegen
 ```
 
 The Convex deployment is configured via `CONVEX_DEPLOYMENT` and
-`VITE_CONVEX_URL`; Convex Auth uses `JWKS`, `JWT_PRIVATE_KEY` and `SITE_URL`
-on the backend.
+`VITE_CONVEX_URL`.
+
+### Auth configuration
+
+Browser (`.env.local`, public — the anon key is safe to ship):
+
+```bash
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<publishable / anon key>
+```
+
+Convex deployment (server-side, never `VITE_`-prefixed):
+
+```bash
+bunx convex env set SUPABASE_URL https://<project>.supabase.co
+# only for off-site snapshots:
+bunx convex env set SUPABASE_SERVICE_ROLE_KEY <service-role / secret key>
+```
+
+Auth emails (confirmation, magic link / email code, password reset) are branded
+in `emails/` — see `emails/README.md`. They can only be applied to the project
+once custom SMTP is configured; Supabase no longer allows template
+customisation on the default mailer.
+
+In Supabase → Authentication → JWT Keys, use **asymmetric** signing keys
+(ES256 or RS256). Convex verifies tokens against
+`<SUPABASE_URL>/auth/v1/.well-known/jwks.json` (see `src/convex/auth.config.ts`);
+the legacy HS256 shared secret cannot be verified that way. If your project
+signs with RS256, change `ALGORITHM` in `auth.config.ts`.
+
+The service-role key is **not** used for authentication — it is only read by
+the snapshot actions in `src/convex/supabaseSync.ts`. Keep it out of `.env`;
+set it on the Convex deployment only.
 
 ## Money & data conventions
 

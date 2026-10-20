@@ -3,9 +3,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import { installClickSounds } from "@/lib/click-sound";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
-import { ConvexAuthProvider } from "@convex-dev/auth/react";
-import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, lazy, Suspense } from "react";
+import { ConvexProvider } from "convex/react";
+import { convex } from "@/lib/convex";
+import { SupabaseAuthProvider } from "@/providers/supabase-auth-provider";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
@@ -108,8 +109,6 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
-
 // Soft click sound on every button press (toggle in Settings → Appearance).
 installClickSounds();
 
@@ -145,8 +144,9 @@ createRoot(document.getElementById("root")!).render(
       <ToolbarErrorBoundary>
         <VlyToolbar />
       </ToolbarErrorBoundary>
-      <ConvexAuthProvider client={convex}>
-        <BrowserRouter>
+      <ConvexProvider client={convex}>
+        <SupabaseAuthProvider>
+          <BrowserRouter>
           <RouteSyncer />
           <Suspense fallback={<RouteLoading />}>
             <Routes>
@@ -282,9 +282,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
-        </BrowserRouter>
-        <Toaster />
-      </ConvexAuthProvider>
+          </BrowserRouter>
+          <Toaster />
+        </SupabaseAuthProvider>
+      </ConvexProvider>
     </RootErrorBoundary>
   </StrictMode>,
 );

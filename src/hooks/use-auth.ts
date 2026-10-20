@@ -1,40 +1,90 @@
 import { api } from "@/convex/_generated/api";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useSupabaseAuthContext } from "@/providers/supabase-auth-provider";
+import { useMutation, useQuery } from "convex/react";
+import { useEffect, useRef } from "react";
 
+/**
+ * App-wide auth hook.
+ *
+ * Backend: Supabase Auth (email OTP, magic link, password, OAuth). Convex sees
+ * the Supabase access token and maps it to a local profile row in
+ * `supabaseUsers` via `ctx.auth.getUserIdentity()`.
+ *
+ * The `user` returned here is the local profile row, so pages get the app's
+ * fields (name, role, defaultBusinessId) instead of raw Supabase metadata.
+ */
 export function useAuth() {
-  const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth();
-  const user = useQuery(api.users.currentUser);
-  const { signIn, signOut } = useAuthActions();
+  const auth = useSupabaseAuthContext();
+  const profile = useQuery(
+    api.supabaseUsers.currentProfile,
+    auth.isAuthenticated ? {} : "skip",
+  );
+  const syncProfile = useMutation(api.supabaseUsers.syncProfile);
+  const syncing = useRef(false);
 
-  // Derive isLoading directly from the dependencies instead of managing separate state
-  const isLoading = isAuthLoading || user === undefined;
+  // First sign-in on a fresh backend: materialize the local profile from the
+  // verified Supabase identity (email / name / avatar) so onboarding has a row.
+  useEffect(() => {
+    if (!auth.isAuthenticated || profile !== null || syncing.current) return;
+    syncing.current = true;
+    syncProfile({})
+      .catch((error) => {
+        console.error("[auth] Could not sync the local profile:", error);
+      })
+      .finally(() => {
+        syncing.current = false;
+      });
+  }, [auth.isAuthenticated, profile, syncProfile]);
+
+  const isLoading =
+    auth.isLoading || (auth.isAuthenticated && profile === undefined);
+
+  const user =
+    auth.isAuthenticated && profile
+      ? {
+          id: profile._id,
+          email: profile.email ?? auth.user?.email ?? null,
+          name: profile.name ?? null,
+          image: profile.image ?? null,
+          supabaseUserId: profile.supabaseUserId,
+          role: profile.role ?? null,
+        }
+      : null;
 
   return {
     isLoading,
-    isAuthenticated,
+    isAuthenticated: auth.isAuthenticated,
     user,
-    signIn,
-    signOut,
+    /** Supabase identity (null while signed out). */
+    supabaseUser: auth.user,
+    signIn: async (provider?: string, options?: Record<string, unknown>) => {
+      if (provider === "email" || provider === "email-otp" || provider === "magiclink") {
+        const email = (options?.email as string | undefined)?.trim();
+        if (!email) throw new Error("Enter an email address to receive a sign-in code.");
+        const { error } = await auth.signInWithOtp(email);
+        if (error) throw new Error(error);
+        return;
+      }
+      const email = (options?.email as string | undefined)?.trim();
+      const password = options?.password as string | undefined;
+      if (email && password) {
+        const { error } = await auth.signInWithPassword(email, password);
+        if (error) throw new Error(error);
+        return;
+      }
+      throw new Error(`Unsupported sign-in method: ${provider ?? "none"}`);
+    },
+    signOut: auth.signOut,
   };
 }
 
+/**
+ * Server-side sign-out hook for the UI.
+ *
+ * Clears the Supabase session (local storage); Convex holds no session of its
+ * own, it just stops receiving a token.
+ */
 export function useServerSignOut() {
-  const { signOut } = useAuthActions();
-
-  // Convex Auth's client `signOut()` only clears the client-side session; the
-  // app used to keep logging back in because the `Anonymous` provider would
-  // silently re-hydrate an anonymous identity. The app no longer registers
-  // `Anonymous`, so after the server call the user is not signed in for any
-  // request the next request (including the Convex subscription that drives
-  // `isAuthenticated`).
-  //
-  // Call this mutation from the UI to invalidate the active session server
-  // side and clear the stored session, then let the auth query re-hydrate
-  // from the server and show the login page.
-  const signOutUser = async () => {
-    await signOut();
-  };
-
-  return { signOutUser };
+  const { signOut } = useSupabaseAuthContext();
+  return { signOutUser: signOut };
 }

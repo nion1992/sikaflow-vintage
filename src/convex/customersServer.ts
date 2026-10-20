@@ -9,12 +9,12 @@ import type { Id } from "./_generated/dataModel";
 
 export interface CustomerAccountDetail {
   customerAccountId: Id<"customerAccounts">;
-  accountUserId: Id<"users">;
+  accountUserId: string;
   businessId: Id<"businesses">;
   customerId: Id<"customers">;
   displayName: string;
   email: string;
-  invitedBy?: Id<"users"> | null;
+  invitedBy?: string | null;
   createdAt: number;
   deletedAt?: number | null;
 }
@@ -57,7 +57,7 @@ export const lookupByCustomer = query({
 
 /** Look up a customer account by its own account user id. */
 export const lookupByAccount = query({
-  args: { accountUserId: v.id("users") },
+  args: { accountUserId: v.string() },
   handler: async (ctx, args) => {
     const { accountUserId } = args;
 
@@ -76,17 +76,17 @@ export const create = mutation({
   args: {
     businessId: v.id("businesses"),
     customerId: v.id("customers"),
-    accountUserId: v.id("users"),
+    accountUserId: v.string(),
     displayName: v.string(),
     email: v.string(),
-    invitedBy: v.optional(v.id("users")),
+    invitedBy: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { businessId, customerId, accountUserId, displayName, email } = args;
 
-    // The customer account belongs to the customer's own Convex user.
-    const accountUser = await ctx.db.get(accountUserId);
-    if (!accountUser) throw new AuthzError("Customer account user not found.");
+    // The customer account belongs to the customer's own Supabase auth user.
+    // accountUserId is a string (Supabase auth id), not a Convex doc id.
+    // No db.get() needed — just validate it's non-empty.
 
     const existing = await ctx.db
       .query("customerAccounts")

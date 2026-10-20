@@ -14,9 +14,20 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 
-import { useAuth } from "@/hooks/use-auth";
+import { authLinkError } from "@/lib/supabase";
+import { useSupabaseAuthContext } from "@/providers/supabase-auth-provider";
 import logo from "@/assets/logo.svg";
-import { ArrowRight, Loader2, Lock, User } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  KeyRound,
+  Loader2,
+  Lock,
+  Mail,
+  MailCheck,
+  User,
+  UserPlus,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
@@ -35,39 +46,68 @@ function resolveRedirectAfterAuth(
 }
 
 export default function AuthPage(props: AuthProps = {}) {
-  const { isLoading: authLoading, isAuthenticated, signIn } = useAuth();
+  // We read auth methods from the Supabase context directly so the login forms
+  // can call signInWithOtp / verifyOtp / signInWithPassword without going
+  // through the Convex-Auth-shaped signIn() wrapper.
+  const supabaseAuth = useSupabaseAuthContext();
+  const { isAuthenticated, isPasswordRecovery } = supabaseAuth;
+  // Supabase sends used/expired links back with `#error_code=...` instead of a
+  // session; ask for a fresh link rather than showing a dead sign-in form.
+  const [linkExpired] = useState(authLinkError);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = resolveRedirectAfterAuth(
     searchParams.get("returnTo"),
     props.redirectAfterAuth,
   );
-  const [mode, setMode] = useState<"credentials" | "otp">("credentials");
+  const [mode, setMode] = useState<
+    "credentials" | "otp" | "signup" | "confirm" | "forgot" | "reset"
+  >(isPasswordRecovery ? "reset" : linkExpired ? "forgot" : "credentials");
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [emailForOtp, setEmailForOtp] = useState("");
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [notice, setNotice] = useState<string | null>(
+    linkExpired
+      ? "That link has expired or was already used. Send yourself a fresh one below."
+      : null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Navigate only once the session is confirmed.
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      navigate(redirect);
-    }
-  }, [authLoading, isAuthenticated, navigate, redirect]);
+    if (!isAuthenticated) return;
+    navigate(redirect);
+  }, [isAuthenticated, navigate, redirect]);
 
   const handleCredentialsSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
     try {
-      await signIn("email-otp", {
-        email: loginId,
-        code: "",
-      });
-      setEmailForOtp(loginId);
-      setMode("otp");
-      setIsLoading(false);
+      if (password) {
+        // Password sign-in.
+        const { error } = await supabaseAuth.signInWithPassword(loginId, password);
+        if (error) throw new Error(error);
+      } else {
+        // Send an OTP to the email/username.
+        const { error } = await supabaseAuth.signInWithOtp(loginId);
+        if (error) throw new Error(error);
+        setEmailForOtp(loginId);
+        setMode("otp");
+        setIsLoading(false);
+        return;
+      }
+      navigate(redirect);
     } catch (err) {
       console.error("Credentials sign-in error:", err);
       setError(
@@ -79,15 +119,135 @@ export default function AuthPage(props: AuthProps = {}) {
     }
   };
 
+  const handleSignUpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setNotice(null);
+    if (signupPassword.length < 6) {
+      setError("Use at least 6 characters for your password.");
+      return;
+    }
+    if (signupPassword !== confirmPassword) {
+      setError("Those two passwords do not match.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error, needsEmailConfirmation } = await supabaseAuth.signUp(
+        signupEmail.trim(),
+        signupPassword,
+        { name: signupName.trim() || undefined },
+      );
+      if (error) throw new Error(error);
+      if (needsEmailConfirmation) {
+        setEmailForOtp(signupEmail.trim());
+        setMode("confirm");
+        setIsLoading(false);
+        return;
+      }
+      navigate(redirect);
+    } catch (err) {
+      console.error("Sign-up error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not create your account. Please try again.",
+      );
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    setError(null);
+    setNotice(null);
+    setIsLoading(true);
+    try {
+      const { error } = await supabaseAuth.resendConfirmation(emailForOtp);
+      if (error) throw new Error(error);
+      setNotice(`A fresh confirmation link is on its way to ${emailForOtp}.`);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not resend the confirmation email.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    setNotice(null);
+    setIsLoading(true);
+    try {
+      const { error } = await supabaseAuth.resetPasswordForEmail(forgotEmail.trim());
+      if (error) throw new Error(error);
+      setForgotSent(true);
+      setNotice(
+        `If ${forgotEmail.trim()} has a SikaFlow account, a link to choose a new password is on its way.`,
+      );
+    } catch (err) {
+      console.error("Password reset request error:", err);
+      setError(
+        err instanceof Error ? err.message : "Could not send the reset link. Please try again.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    if (newPassword.length < 6) {
+      setError("Use at least 6 characters for your password.");
+      return;
+    }
+    if (newPassword !== newPasswordConfirm) {
+      setError("Those two passwords do not match.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await supabaseAuth.updatePassword(newPassword);
+      if (error) throw new Error(error);
+      // Saved — this session is a normal sign-in again, so let the redirect run.
+      supabaseAuth.finishPasswordRecovery();
+      setNewPassword("");
+      setNewPasswordConfirm("");
+      navigate(redirect, { replace: true });
+    } catch (err) {
+      console.error("Password update error:", err);
+      setError(
+        err instanceof Error ? err.message : "Could not save your new password.",
+      );
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelReset = async () => {
+    setError(null);
+    setNotice(null);
+    setNewPassword("");
+    setNewPasswordConfirm("");
+    setIsLoading(true);
+    try {
+      // Clears the recovery session (and the recovery flag) so nobody inherits it.
+      await supabaseAuth.signOut();
+      setMode("credentials");
+      navigate("/");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleOtpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
     try {
-      await signIn("email-otp", {
-        email: emailForOtp,
-        code: otp,
-      });
+      const { error } = await supabaseAuth.verifyOtp(emailForOtp, otp);
+      if (error) throw new Error(error);
 
       navigate(redirect);
     } catch (err) {
@@ -97,21 +257,6 @@ export default function AuthPage(props: AuthProps = {}) {
       setIsLoading(false);
 
       setOtp("");
-    }
-  };
-
-  const handleGuestLogin = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      await signIn("anonymous");
-      navigate(redirect);
-    } catch (err) {
-      console.error("Guest login error:", err);
-      setError(
-        `Failed to sign in as guest: ${err instanceof Error ? err.message : "Unknown error"}`,
-      );
-      setIsLoading(false);
     }
   };
 
@@ -221,26 +366,381 @@ export default function AuthPage(props: AuthProps = {}) {
 
                   <Button
                     type="button"
-                    variant="ghost"
-                    className="w-full justify-start gap-2 text-sm"
-                    onClick={handleGuestLogin}
+                    variant="link"
+                    className="w-full justify-start gap-2 text-xs"
+                    onClick={() => {
+                      setError(null);
+                      setNotice(null);
+                      setForgotSent(false);
+                      setForgotEmail(loginId.includes("@") ? loginId.trim() : "");
+                      setMode("forgot");
+                    }}
                     disabled={isLoading}
                   >
-                    <User className="h-4 w-4" />
-                    Continue as guest
+                    <KeyRound className="h-3.5 w-3.5" />
+                    Forgot your password?
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-center gap-2 text-sm"
+                    onClick={() => {
+                      setError(null);
+                      setNotice(null);
+                      setSignupEmail(loginId.includes("@") ? loginId.trim() : "");
+                      setMode("signup");
+                    }}
+                    disabled={isLoading}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Create an account
+                  </Button>
+                </CardFooter>
+              </form>
+            </>
+          ) : mode === "signup" ? (
+            <>
+              <CardHeader className="text-center">
+                <CardTitle className="font-serif text-2xl">Open your ledger</CardTitle>
+                <CardDescription>
+                  Create your SikaFlow account — it takes a moment.
+                </CardDescription>
+              </CardHeader>
+              <form onSubmit={handleSignUpSubmit}>
+                <CardContent className="space-y-4">
+                  <div className="relative flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        name="name"
+                        placeholder="your name (optional)"
+                        type="text"
+                        className="pl-9"
+                        disabled={isLoading}
+                        value={signupName}
+                        onChange={(e) => setSignupName(e.target.value)}
+                        autoComplete="name"
+                        maxLength={80}
+                      />
+                    </div>
+                  </div>
+                  <div className="relative flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        name="email"
+                        placeholder="you@example.com"
+                        type="email"
+                        className="pl-9"
+                        disabled={isLoading}
+                        value={signupEmail}
+                        onChange={(e) => setSignupEmail(e.target.value)}
+                        autoComplete="email"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="relative flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        name="new-password"
+                        placeholder="Password (6+ characters)"
+                        type="password"
+                        className="pl-9"
+                        disabled={isLoading}
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                        autoComplete="new-password"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  <div className="relative flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        name="confirm-password"
+                        placeholder="Repeat your password"
+                        type="password"
+                        className="pl-9"
+                        disabled={isLoading}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        autoComplete="new-password"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  {error && (
+                    <p className="text-sm text-destructive" role="alert">
+                      {error}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    We email you a link to confirm the address before your ledger opens.
+                  </p>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-3">
+                  <Button type="submit" className="w-full gap-2" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Creating your account…
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4" />
+                        Create account
+                      </>
+                    )}
                   </Button>
 
                   <Button
                     type="button"
                     variant="link"
-                    className="w-full justify-start text-xs"
+                    className="w-full justify-center text-xs"
                     onClick={() => {
-                      setLoginId("");
-                      setMode("otp");
+                      setError(null);
+                      setNotice(null);
+                      setMode("credentials");
                     }}
                     disabled={isLoading}
                   >
-                    Use different login
+                    I already have an account
+                  </Button>
+                </CardFooter>
+              </form>
+            </>
+          ) : mode === "confirm" ? (
+            <>
+              <CardHeader className="text-center">
+                <CardTitle className="font-serif text-2xl">Confirm your email</CardTitle>
+                <CardDescription>
+                  We sent a confirmation link to {emailForOtp}. Open it to unlock your
+                  ledger.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {notice && (
+                  <p className="text-sm text-muted-foreground" role="status">
+                    {notice}
+                  </p>
+                )}
+                {error && (
+                  <p className="text-sm text-destructive" role="alert">
+                    {error}
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  className="w-full gap-2"
+                  onClick={handleResendConfirmation}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <MailCheck className="h-4 w-4" />
+                      Resend the link
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+              <CardFooter className="flex flex-col gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-start gap-2 text-sm"
+                  onClick={() => {
+                    setError(null);
+                    setNotice(null);
+                    setPassword("");
+                    setMode("credentials");
+                  }}
+                  disabled={isLoading}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to sign in
+                </Button>
+              </CardFooter>
+            </>
+          ) : mode === "forgot" ? (
+            <>
+              <CardHeader className="text-center">
+                <CardTitle className="font-serif text-2xl">Reset your password</CardTitle>
+                <CardDescription>
+                  Enter the email you signed up with and we&rsquo;ll send a link to
+                  choose a new one.
+                </CardDescription>
+              </CardHeader>
+              <form onSubmit={handleForgotSubmit}>
+                <CardContent className="space-y-4">
+                  <div className="relative flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        name="reset-email"
+                        placeholder="you@example.com"
+                        type="email"
+                        className="pl-9"
+                        disabled={isLoading || forgotSent}
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        autoComplete="email"
+                        required
+                      />
+                    </div>
+                  </div>
+                  {notice && (
+                    <p className="text-sm text-muted-foreground" role="status">
+                      {notice}
+                    </p>
+                  )}
+                  {error && (
+                    <p className="text-sm text-destructive" role="alert">
+                      {error}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    The link is valid once and expires after an hour.
+                  </p>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-3">
+                  <Button
+                    type="submit"
+                    className="w-full gap-2"
+                    disabled={isLoading || forgotSent}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Sending…
+                      </>
+                    ) : (
+                      <>
+                        <MailCheck className="h-4 w-4" />
+                        {forgotSent ? "Link sent" : "Send reset link"}
+                      </>
+                    )}
+                  </Button>
+
+                  {forgotSent && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="w-full justify-center text-xs"
+                      onClick={() => {
+                        setNotice(null);
+                        setForgotSent(false);
+                      }}
+                      disabled={isLoading}
+                    >
+                      Send it again
+                    </Button>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-start gap-2 text-sm"
+                    onClick={() => {
+                      setError(null);
+                      setNotice(null);
+                      setMode("credentials");
+                    }}
+                    disabled={isLoading}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to sign in
+                  </Button>
+                </CardFooter>
+              </form>
+            </>
+          ) : mode === "reset" ? (
+            <>
+              <CardHeader className="text-center">
+                <CardTitle className="font-serif text-2xl">Choose a new password</CardTitle>
+                <CardDescription>
+                  Pick something you&rsquo;ll remember — 6 characters or more.
+                </CardDescription>
+              </CardHeader>
+              <form onSubmit={handleResetSubmit}>
+                <CardContent className="space-y-4">
+                  <div className="relative flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        name="new-password"
+                        placeholder="New password"
+                        type="password"
+                        className="pl-9"
+                        disabled={isLoading}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        autoComplete="new-password"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  <div className="relative flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        name="confirm-new-password"
+                        placeholder="Repeat the new password"
+                        type="password"
+                        className="pl-9"
+                        disabled={isLoading}
+                        value={newPasswordConfirm}
+                        onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                        autoComplete="new-password"
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  {error && (
+                    <p className="text-sm text-destructive" role="alert">
+                      {error}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Saving it signs you in and takes you back to your ledger.
+                  </p>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-3">
+                  <Button type="submit" className="w-full gap-2" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="h-4 w-4" />
+                        Save password
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-start gap-2 text-sm"
+                    onClick={handleCancelReset}
+                    disabled={isLoading}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Cancel and sign out
                   </Button>
                 </CardFooter>
               </form>

@@ -1,16 +1,16 @@
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { query } from "./_generated/server";
+import { getAuthUserId } from "./supabaseAuth";
+import { findProfileRow } from "./supabaseUsers";
 
 /**
- * Get the current signed in user. Returns null if the user is not signed in.
- * Usage: const signedInUser = await ctx.runQuery(api.authHelpers.currentUser);
- * THIS FUNCTION IS READONLY. DO NOT MODIFY.
+ * The signed-in user's local profile. Returns null when signed out or before
+ * the profile row exists (mid-onboarding).
  */
 export const currentUser = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (userId === null) return null;
-    return await ctx.db.get(userId);
+    const supabaseUserId = await getAuthUserId(ctx);
+    if (!supabaseUserId) return null;
+    return await findProfileRow(ctx, supabaseUserId);
   },
 });

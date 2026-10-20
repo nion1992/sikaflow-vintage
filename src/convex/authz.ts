@@ -1,4 +1,4 @@
-import { getAuthUserId } from "@convex-dev/auth/server";
+import { getAuthUserId } from "./supabaseAuth";
 import { QueryCtx, MutationCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import type { BusinessRole } from "./shared";
@@ -10,7 +10,6 @@ import type { BusinessRole } from "./shared";
  * touches business data MUST go through these helpers. Client-side checks are
  * never trusted.
  */
-
 export class AuthzError extends Error {
   constructor(message = "Not authorized") {
     super(message);
@@ -18,8 +17,14 @@ export class AuthzError extends Error {
   }
 }
 
+/**
+ * The caller's identity is a Supabase auth user id (a string), not a Convex
+ * doc id. The `supabaseUsers` table maps supabaseUserId -> app profile.
+ * We use `string` here instead of `Id<"supabaseUsers">` because the auth
+ * context carries the Supabase id, and we look up the mapping row on demand.
+ */
 export interface BusinessContext {
-  userId: Id<"users">;
+  userId: string;
   businessId: Id<"businesses">;
   business: Doc<"businesses">;
   role: BusinessRole;
@@ -46,7 +51,7 @@ export async function requireMembership(
   ctx: QueryCtx | MutationCtx,
   businessId: Id<"businesses">,
   opts?: { write?: boolean },
-): Promise<{ userId: Id<"users">; role: BusinessRole }> {
+): Promise<{ userId: string; role: BusinessRole }> {
   const userId = await requireUserId(ctx);
 
   const membership = await ctx.db
