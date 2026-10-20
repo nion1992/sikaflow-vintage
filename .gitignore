@@ -5,3 +5,4 @@ src/convex/_generated
 
 # local dev server logs
 *.log
+.vercel

@@ -1,0 +1,6 @@
+.env.local
+.env.keys
+.vercel
+screenshots
+isolate
+sikaflow-app.zip
