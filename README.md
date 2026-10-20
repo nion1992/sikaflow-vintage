@@ -39,6 +39,33 @@ bunx convex dev    # backend & codegen
 The Convex deployment is configured via `CONVEX_DEPLOYMENT` and
 `VITE_CONVEX_URL`.
 
+### Deploying to Vercel
+
+The frontend is a static Vite build; Vercel serves it and nothing else —
+the Convex backend is deployed separately with `bunx convex deploy`.
+
+- **Project:** `sikaflow` (team `nion1992s-projects`), production alias
+  <https://sikaflow-six.vercel.app>.
+- **Build:** `vercel.json` pins `buildCommand: npm run build`
+  (`tsc -b && vite build`), output directory `dist`, plus an SPA rewrite so
+  react-router deep links (`/auth`, `/quotes/...`) survive a refresh.
+- **Environment variables** (Project → Settings → Environment Variables,
+  Production *and* Preview — all three are public and baked in at build time):
+
+  ```bash
+  VITE_CONVEX_URL=https://<deployment>.convex.cloud
+  VITE_SUPABASE_URL=https://<project>.supabase.co
+  VITE_SUPABASE_ANON_KEY=<publishable / anon key>
+  ```
+
+- **Uploads:** `.vercelignore` excludes `.env.local`, `.env.keys` and scratch
+  artifacts from deploy bundles.
+- **Deploy:** `npx vercel deploy --prod` from the repo root (or connect the
+  GitHub repo for push-to-deploy).
+- **Auth redirects:** Supabase → Authentication → URL Configuration must
+  include the deployed origin (`https://<project>-<team>.vercel.app/**`) so
+  email sign-in links return to the app.
+
 ### Auth configuration
 
 Browser (`.env.local`, public — the anon key is safe to ship):
